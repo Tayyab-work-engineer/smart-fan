@@ -1,0 +1,42 @@
+This tutorial we will incorporate temperature measurement using the LM35 sensor temperature.
+
+First we will learn how to use LM35 then we will incorporate into our main build.
+https://www.youtube.com/watch?v=PBsOt6jdPkY
+
+What is LM35? Provides a voltage output that is linearly proportional 
+to temperature in Celcius. Does not require calibration nor additional
+components.
+Accuracy of:
++ - 0.5degreeC at room temperature
++ - 1C over -55degreeC to 155 degreeC range
+
+Operates from 4V to 30V
+
+Use temperature fan . png to build the circuit
+Code for 10-bit ADC and 3.3V reference:
+#define LM35Pin A0
+int LM35Read;
+float temperature;
+
+void setup() {
+  Serial.begin(9600);
+}
+
+void loop() {
+  LM35Read = analogRead(LM35Pin); 
+  
+  float voltage = LM35Read * (3.3 / 1023.0);  // volts
+  temperature = voltage * 100.0;
+  
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+
+  Serial.print("ADC reading: ");
+  Serial.print(LM35Read);
+  Serial.print(" | Voltage: ");
+  Serial.print(voltage);
+  Serial.println(" V");
+
+  delay(1000);
+}
