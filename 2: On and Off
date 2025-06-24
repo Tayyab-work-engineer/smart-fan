@@ -1,0 +1,69 @@
+The first step to create a smart fan is to start from the basics. 
+This tutorial we will make the fan turn on and off using a switch.
+
+Build the circuit according to 2b: On_off fan
+Install the library MKRMotorCarrier.h and get the example code.
+
+Edit the code:
+
+#include <MKRMotorCarrier.h>
+const int button = 2;
+
+void setup() 
+{
+  Serial.begin(115200);
+  while (!Serial);
+
+  if (controller.begin()) 
+  {
+    Serial.print("MKR Motor Shield connected, firmware version ");
+    Serial.println(controller.getFWVersion());
+  } 
+  else 
+  {
+    Serial.println("Couldn't connect! Check the red LED.");
+    while (1);
+  }
+
+  Serial.println("Rebooting motor controller...");
+  controller.reboot();
+  delay(500);
+
+  float batteryVoltage = (float)battery.getConverted();
+  Serial.print("Battery voltage: ");
+  Serial.print(batteryVoltage);
+  Serial.print("V, Raw ");
+  Serial.println(battery.getRaw());
+
+  pinMode(button, INPUT_PULLUP);
+}
+
+void loop() 
+{
+  float batteryVoltage = (float)battery.getConverted();
+  if (batteryVoltage < 5) 
+  {
+    Serial.println("WARNING: LOW BATTERY - STOPPING MOTOR");
+    M1.setDuty(0);
+    while (batteryVoltage < 11) 
+    {
+      batteryVoltage = (float)battery.getConverted();
+      delay(500);
+    }
+  } 
+  else 
+  {
+    if (digitalRead(button) == LOW) {
+      M1.setDuty(duty);
+      Serial.print("M1 Duty: ");
+      Serial.println(50);  // Print the actual duty value
+    }
+    else {
+      M1.setDuty(0);  // Stops motor connected to M1
+    }
+
+    // Maintain communication with the carrier
+    controller.ping();
+    delay(50);
+  }
+}
