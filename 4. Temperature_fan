@@ -12,6 +12,10 @@ Accuracy of:
 
 Operates from 4V to 30V
 
+1pin is 5v
+2pin is measure
+3pin is ground
+
 Use temperature fan . png to build the circuit
 Code for 10-bit ADC and 3.3V reference:
 #define LM35Pin A0
@@ -39,4 +43,100 @@ void loop() {
   Serial.println(" V");
 
   delay(1000);
+}
+
+
+Full circuit check image temperature_fan. png
+
+Code:
+#include <MKRMotorCarrier.h>
+
+#define LM35Pin A0
+
+int LM35Read;
+float temperature;
+int dutyCycle;  // 0 to 255
+const int button = 2;
+unsigned long lastTempUpdate = 0;
+const unsigned long tempUpdateInterval = 6000;  // 1 minute
+
+void setup() 
+{
+  Serial.begin(115200);
+  while (!Serial);
+
+  if (controller.begin()) 
+  {
+    Serial.print("MKR Motor Shield connected, firmware version ");
+    Serial.println(controller.getFWVersion());
+  } 
+  else 
+  {
+    Serial.println("Couldn't connect! Check the red LED.");
+    while (1);
+  }
+
+  Serial.println("Rebooting motor controller...");
+  controller.reboot();
+  delay(500);
+
+  float batteryVoltage = (float)battery.getConverted();
+  Serial.print("Battery voltage: ");
+  Serial.print(batteryVoltage);
+  Serial.print("V, Raw ");
+  Serial.println(battery.getRaw());
+
+  pinMode(button, INPUT_PULLUP);
+}
+
+void loop() 
+{
+  unsigned long currentTime = millis();
+  if (currentTime - lastTempUpdate >= tempUpdateInterval) {
+    lastTempUpdate = currentTime;
+
+    LM35Read = analogRead(LM35Pin);
+
+    float voltage = LM35Read * (3.3 / 1023.0);  // assuming 10-bit ADC
+    temperature = voltage * 100.0;
+
+    // Determine duty cycle based on temperature
+    if (temperature < 25) {
+      dutyCycle = 0;  // fan off below 25°C
+    } else if (temperature >= 25 && temperature <= 30) {
+      dutyCycle = (temperature - 25) * 10 + 50;  // linear: 25°C = 50%, 26°C = 60%, ..., 30°C = 100%
+    } else {
+      dutyCycle = 100;  // Max speed above 30°C
+    }    
+    Serial.print("Temp: ");
+    Serial.print(temperature);
+    Serial.print(" °C | Duty Cycle: ");
+    Serial.println(dutyCycle);
+  }
+  float batteryVoltage = (float)battery.getConverted();
+  if (batteryVoltage < 5) 
+  {
+    Serial.println("WARNING: LOW BATTERY - STOPPING MOTOR");
+    M1.setDuty(0);
+    while (batteryVoltage < 11) 
+    {
+      batteryVoltage = (float)battery.getConverted();
+      delay(500);
+    }
+  } 
+  else 
+  {
+    if (digitalRead(button) == LOW) {
+      // Spin forward
+      M1.setDuty(dutyCycle);
+
+    }
+    else {
+      M1.setDuty(0);  // Stops motor connected to M1
+    }
+
+    // Maintain communication with the carrier
+    controller.ping();
+    delay(50);
+  }
 }
