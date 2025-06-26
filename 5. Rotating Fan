@@ -1,0 +1,23 @@
+In this tutorial we will get a servo motor to rotate the fan.
+First we will learn how to get the servo to move.
+
+Code:
+#include <Servo.h>
+
+Servo myServo;
+
+void setup() {
+  myServo.attach(7);  // Attach servo to pin 
+  Serial.begin(9600);
+
+}
+
+void loop() {
+  int sensorValue = analogRead(A0);  // Read sensor value from A0
+  int angle = map(sensorValue, 0, 1023, 0, 180);  // Map the sensor value to an angle
+
+  Serial.println(angle);        // Print the sensor value for debugging
+  myServo.write(angle);  // Move servo to the corresponding angle
+  delay(20);
+
+}
