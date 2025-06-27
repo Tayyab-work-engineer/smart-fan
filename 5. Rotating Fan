@@ -22,9 +22,180 @@ void loop() {
 
 }
 
+Code for rotating the fan:
+#include <Servo.h>
+Servo myServo;
+
+const int rotate_button = 10;
+int pressed = 0;
+int direction = 0;
+
+void setup() 
+{
+  pinMode(rotate_button, INPUT_PULLUP);
+  myServo.attach(7);
+  myServo.write(0);
+  Serial.begin(9600);
+}
+
+void loop() 
+{
+  static int lastButtonState = HIGH;
+
+  int buttonState = digitalRead(rotate_button);
+
+  if (buttonState == LOW && lastButtonState == HIGH) {
+    pressed = !pressed;
+    delay(200); // basic debounce
+  }
+
+  lastButtonState = buttonState;
+
+  if (pressed == 1) {
+    if (direction == 0) {
+      myServo.write(0);
+      direction = 1;
+      delay(1000); // wait at edge
+    }
+    else {
+      myServo.write(180);
+      direction = 0;
+      delay(1000); // wait at edge
+    }
+  }
+}
+
+Problems with this code is that it uses delays which will affect
+the whole code. The whole program will stop due to the delays which will
+affect the motor spinning.
+
+To counteract this we will use millis()
+What is millis? 
+Returns the number of milliseconds passed since the Arduino 
+board began running the current program.
+How to use?
+To use millis() for timing you need to record the time at which an action 
+took place to start the timing period and then to check at frequent intervals 
+whether the required period has elapsed. If so, you presumably want to do 
+something, otherwise why would you be timing ?
+
+Example:
+currentMillis	1200
+lastButtonDelay	950
+buttonDelay	200
+
+currentMillis - lastButtonDelay >= buttonDelay
+1200 - 950 >= 200
+250 >= 200 → ✅ TRUE
+200 ms have passed, so we accept the button press as valid.
+
+another example:
+currentMillis	1020
+lastButtonDelay	950
+buttonDelay	200
+1020 - 950 >= 200
+70 >= 200 → ❌ FALSE
+Not enough time has passed so we ignore the button press.
 
 
-Full code:
+
+Example code of how to use millis
+(https://forum.arduino.cc/t/using-millis-for-timing-a-beginners-guide/483573/2):
+
+unsigned long startMillis;
+unsigned long current Millis;
+const unsigned long period = 1000; //the value is a number of milliseconds, ie 1 second.
+
+void setup() 
+{
+  pinMode(rotate_button, INPUT_PULLUP);
+  myServo.attach(7);
+  myServo.write(0);
+  Serial.begin(9600);
+
+  startMillis = millis();
+}
+
+void loop() 
+{
+  currentMillis = millis(); //get the current "time" (actually the number of milliseconds since the program started)
+
+  if (currentMillis - startMillis >= period) {// test whether the period has elapsed
+    // code goes here, like turn on LED
+    startMillis = currentMillis; //save the start time of the when it was turned on
+  }
+
+}
+
+
+Using millis in the code of the rotating fan
+#include <Servo.h>
+Servo myServo;
+
+const int rotate_button = 10;
+int pressed = 0;
+int direction = 0;
+
+unsigned long startMillis;
+unsigned long current Millis;
+const unsigned long period = 1000; //the value is a number of milliseconds, ie 1 second.
+
+const unsigned long previousButtonDelay = 0; 
+const unsigned long buttonDelay = 200; 
+
+
+
+void setup() 
+{
+  pinMode(rotate_button, INPUT_PULLUP);
+  myServo.attach(7);
+  myServo.write(0);
+  Serial.begin(9600);
+
+  startMillis = millis();
+}
+
+void loop() 
+{
+  currentMillis = millis(); //get the current "time" (actually the number of milliseconds since the program started)
+  static int lastButtonState = HIGH; //variable that remembers the previous state of the button across multiple calls to loop()
+
+  int buttonState = digitalRead(rotate_button); //when pressed , becomes low, not pressed stays high
+
+  //IMPORTANT
+  if (buttonState != lastButtonState) {
+    // Only reset the debounce timer if the button state changed
+    lastButtonDelay = currentMillis; //changes the lastButtonDelay to currentMillis when the button is pressed
+  }
+
+
+  // if enough time has passed and the button is pressed
+  if ( (currentMillis - lastButtonDelay) > buttonDelay ){
+    if (buttonState == LOW && lastButtonState == HIGH) { //checks for falling edge, button goes unpressed to pressed
+      pressed = !pressed;
+    }
+  }
+  
+  lastButtonState = buttonState; //updates lastbuttonstate to remember this reading for the next loop
+
+  if (pressed == 1) {
+    if (direction == 0 && ( currentMillis - startMillis >= period )) {// test whether the period has elapsed
+      myServo.write(0);
+      direction = 1;
+      startMillis = currentMillis; //save the start time of the when it was turned on
+    }
+    else if (direction == 1 && ( currentMillis - startMillis >= period )){
+      myServo.write(180);
+      direction = 0;
+      startMillis = currentMillis; //save the start time of the when it was turned on
+    }
+  }
+}
+
+
+
+
+Incorporting it into the main code:
 
 #include <MKRMotorCarrier.h>
 #include <Servo.h>
@@ -153,3 +324,5 @@ void loop()
   delay(50);
   }
 }
+
+
