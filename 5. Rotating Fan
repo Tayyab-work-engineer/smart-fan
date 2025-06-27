@@ -102,33 +102,7 @@ Not enough time has passed so we ignore the button press.
 Example code of how to use millis
 (https://forum.arduino.cc/t/using-millis-for-timing-a-beginners-guide/483573/2):
 
-unsigned long startMillis;
-unsigned long current Millis;
-const unsigned long period = 1000; //the value is a number of milliseconds, ie 1 second.
-
-void setup() 
-{
-  pinMode(rotate_button, INPUT_PULLUP);
-  myServo.attach(7);
-  myServo.write(0);
-  Serial.begin(9600);
-
-  startMillis = millis();
-}
-
-void loop() 
-{
-  currentMillis = millis(); //get the current "time" (actually the number of milliseconds since the program started)
-
-  if (currentMillis - startMillis >= period) {// test whether the period has elapsed
-    // code goes here, like turn on LED
-    startMillis = currentMillis; //save the start time of the when it was turned on
-  }
-
-}
-
-
-Using millis in the code of the rotating fan
+Rotating the fan using millis"
 #include <Servo.h>
 Servo myServo;
 
@@ -136,14 +110,9 @@ const int rotate_button = 10;
 int pressed = 0;
 int direction = 0;
 
-unsigned long startMillis;
-unsigned long current Millis;
-const unsigned long period = 1000; //the value is a number of milliseconds, ie 1 second.
-
-const unsigned long previousButtonDelay = 0; 
-const unsigned long buttonDelay = 200; 
-
-
+unsigned long startMillis;  //some global variables available anywhere in the program
+unsigned long currentMillis;
+const unsigned long period = 1000;  //the value is a number of milliseconds
 
 void setup() 
 {
@@ -152,65 +121,70 @@ void setup()
   myServo.write(0);
   Serial.begin(9600);
 
-  startMillis = millis();
+  startMillis = millis();  //initial start time
+
 }
 
 void loop() 
 {
-  currentMillis = millis(); //get the current "time" (actually the number of milliseconds since the program started)
-  static int lastButtonState = HIGH; //variable that remembers the previous state of the button across multiple calls to loop()
+  static int lastButtonState = HIGH;
 
-  int buttonState = digitalRead(rotate_button); //when pressed , becomes low, not pressed stays high
+  currentMillis = millis();  //get the current "time" (actually the number of milliseconds since the program started)
 
-  //IMPORTANT
-  if (buttonState != lastButtonState) {
-    // Only reset the debounce timer if the button state changed
-    lastButtonDelay = currentMillis; //changes the lastButtonDelay to currentMillis when the button is pressed
+
+  int buttonState = digitalRead(rotate_button);
+
+  if (buttonState == LOW && lastButtonState == HIGH) {
+    pressed = !pressed;
+    delay(200); // basic debounce
   }
 
-
-  // if enough time has passed and the button is pressed
-  if ( (currentMillis - lastButtonDelay) > buttonDelay ){
-    if (buttonState == LOW && lastButtonState == HIGH) { //checks for falling edge, button goes unpressed to pressed
-      pressed = !pressed;
-    }
-  }
-  
-  lastButtonState = buttonState; //updates lastbuttonstate to remember this reading for the next loop
+  lastButtonState = buttonState;
 
   if (pressed == 1) {
-    if (direction == 0 && ( currentMillis - startMillis >= period )) {// test whether the period has elapsed
+
+    if (direction == 0 && (currentMillis - startMillis >= period) ) {
       myServo.write(0);
       direction = 1;
-      startMillis = currentMillis; //save the start time of the when it was turned on
+
+      startMillis = currentMillis;
     }
-    else if (direction == 1 && ( currentMillis - startMillis >= period )){
+
+
+    else if (direction == 1 && (currentMillis - startMillis >= period) ){
       myServo.write(180);
       direction = 0;
-      startMillis = currentMillis; //save the start time of the when it was turned on
+
+      startMillis = currentMillis;
+
     }
   }
 }
 
+Using millis for button press:
 
 
 
 Incorporting it into the main code:
-
 #include <MKRMotorCarrier.h>
 #include <Servo.h>
 
+Servo myServo;
 
 #define LM35Pin A0
+
+const int rotate_button = 10;
+int pressed = 0;
+int direction = 0;
+
+unsigned long startMillis;  //some global variables available anywhere in the program
+unsigned long currentMillis;
+const unsigned long period = 1000;  //the value is a number of milliseconds
 
 int LM35Read;
 float temperature;
 int dutyCycle;  // 0 to 255
 const int button = 2;
-const int rotate_button = 10;
-int pressed = 0;
-int direction = 0;
-
 unsigned long lastTempUpdate = 0;
 const unsigned long tempUpdateInterval = 6000;  // 1 minute
 
@@ -242,20 +216,30 @@ void setup()
 
   pinMode(button, INPUT_PULLUP);
 
-  //rotating the servo
-  pinMode(rotate_button, INPUT_PULLUP);// Set pin 10 as an input with an internal pull-up resistor
-  // This means pin 10 will normally be HIGH unless connected to GND.
+  pinMode(rotate_button, INPUT_PULLUP);
+  myServo.attach(7);
+  myServo.write(0);
 
-  myServo.attach(7);  // Attach servo to pin 
-  myServo.write(0); // Start at 0 degrees
+  startMillis = millis();  //initial start time
 
 
-  
+
 }
 
 void loop() 
 {
-  unsigned long currentTime = millis();
+  static int lastButtonState = HIGH;
+  currentMillis = millis();  //get the current "time" (actually the number of milliseconds since the program started)
+  int buttonState = digitalRead(rotate_button);
+
+  if (buttonState == LOW && lastButtonState == HIGH) {
+    pressed = !pressed;
+    delay(200); // basic debounce
+  }
+  lastButtonState = buttonState;
+
+
+  unsigned long currentTime = millis(); //using for temperature detection
   if (currentTime - lastTempUpdate >= tempUpdateInterval) {
     lastTempUpdate = currentTime;
 
@@ -298,31 +282,32 @@ void loop()
     else {
       M1.setDuty(0);  // Stops motor connected to M1
     }
-    //spin if button is pressed
-    if (digitalRead(button) == LOW && pressed == 0) {
-      pressed == 1;
 
-    }
-    else if (digitalRead(button) == LOW && pressed == 1) {
-      pressed == 0;
-    }
-    if (pressed == 1){
-      if (direction == 0){
-        myServo.write(180);
+    if (pressed == 1) {
+
+      if (direction == 0 && (currentMillis - startMillis >= period) ) {
+        myServo.write(0);
         direction = 1;
+
+        startMillis = currentMillis;
       }
-      else{
-        myServo.write(90);
+
+
+      else if (direction == 1 && (currentMillis - startMillis >= period) ){
+        myServo.write(180);
         direction = 0;
+
+        startMillis = currentMillis;
+
       }
-    }
-
-
   }
-  // Maintain communication with the carrier
-  controller.ping();
-  delay(50);
+
+
+
+
+    // Maintain communication with the carrier
+    controller.ping();
+    delay(50);
   }
 }
-
 
